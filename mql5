@@ -1,0 +1,85 @@
+mql5
+//+------------------------------------------------------------------+
+//|                                  KT XMaster Formula MT5         |
+//|                        Developer's Site: forexroboteasy.com      |
+//|                        Development: Forex Robot Easy Team        |
+//+------------------------------------------------------------------+
+
+#property copyright 'Forex Robot Easy Team'
+#property link      'forexroboteasy.com'
+
+//+------------------------------------------------------------------+
+//| Custom indicator initialization function                         |
+//+------------------------------------------------------------------+
+int OnInit()
+{
+    //--- indicator buffers mapping
+    IndicatorBuffers(2);
+    //--- set buffer 0 as buy signal
+    SetIndexBuffer(0, BuySignalBuffer);
+    //--- set buffer 1 as sell signal
+    SetIndexBuffer(1, SellSignalBuffer);
+    //--- set the style of the buffers
+    SetIndexStyle(0,DRAW_ARROW,EMPTY,2,clrGreen);
+    SetIndexStyle(1,DRAW_ARROW,EMPTY,2,clrRed);
+    //--- set the labels
+    IndicatorShortName('KT XMaster Formula MT5');
+
+    return(INIT_SUCCEEDED);
+}
+
+//+------------------------------------------------------------------+
+//| Custom indicator iteration function                              |
+//+------------------------------------------------------------------+
+int OnCalculate(const int rates_total,
+                const int prev_calculated,
+                const datetime &time[],
+                const double &open[],
+                const double &high[],
+                const double &low[],
+                const double &close[],
+                const long &tick_volume[],
+                const long &volume[],
+                const int &spread[])
+{
+    //--- calculate new bars
+    int limit = rates_total - prev_calculated;
+    
+    //--- iterate through new bars
+    for(int i = 0; i < limit; i++)
+    {
+        //--- calculate moving averages
+        double ma1 = iMA(NULL, 0, 10, 0, MODE_SMA, PRICE_CLOSE, i);
+        double ma2 = iMA(NULL, 0, 20, 0, MODE_SMA, PRICE_CLOSE, i);
+        
+        //--- calculate RSI
+        double rsi = iRSI(NULL, 0, 14, PRICE_CLOSE, i);
+        
+        //--- calculate MACD
+        double macd_main[], macd_signal[];
+        ArrayResize(macd_main, 1);
+        ArrayResize(macd_signal, 1);
+        iMACD(NULL, 0, 12, 26, 9, PRICE_CLOSE, MODE_SIGNAL, macd_main, macd_signal, i);
+        
+        //--- check for buy signal
+        if(ma1 > ma2 && rsi > 50 && macd_main[0] > macd_signal[0])
+        {
+            BuySignalBuffer[i] = High[i];
+            SellSignalBuffer[i] = EMPTY_VALUE;
+        }
+        //--- check for sell signal
+        else if(ma1 < ma2 && rsi < 50 && macd_main[0] < macd_signal[0])
+        {
+            SellSignalBuffer[i] = Low[i];
+            BuySignalBuffer[i] = EMPTY_VALUE;
+        }
+        //--- no signal
+        else
+        {
+            BuySignalBuffer[i] = SellSignalBuffer[i] = EMPTY_VALUE;
+        }
+    }
+    
+    //--- return value of prev_calculated for next call
+    return(rates_total);
+}
